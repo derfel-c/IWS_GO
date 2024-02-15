@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/insabelter/IWS_GO/models"
 	"github.com/insabelter/IWS_GO/repository"
+	"github.com/insabelter/IWS_GO/validation"
+
+	"net/http"
 )
 
 // route to get all feedbacks as a list
@@ -19,7 +23,7 @@ func MakeGetFeedbacksHandler(ctx context.Context, repository repository.Reposito
 			if json, err := json.Marshal(feedbacks); err == nil {
 				// successfully send the json response
 				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprintf(w, string(json))
+				fmt.Fprint(w, string(json))
 			} else {
 				// error response if the json transformation fails
 				fmt.Println(err)
@@ -39,14 +43,23 @@ func MakeGetFeedbacksHandler(ctx context.Context, repository repository.Reposito
 func MakeGetFeedbackHandler(ctx context.Context, repository repository.Repository) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get the id from the url
-
+		id := mux.Vars(r)["id"]
 		// get the feedback from the repository (+ check for error)
-
-		// transform the feedback into json (+ check for error)
-
-		// successful: send the feedback as json response
-
-		// repository or json error: send an error response
+		if feedback, err := repository.GetFeedback(ctx, id); err == nil {
+			if json, err := json.Marshal(feedback); err == nil {
+				// successfully send the json response
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, string(json))
+			} else {
+				// error response if the json transformation fails
+				fmt.Println(err)
+				w.WriteHeader(http.StatusBadRequest)
+			}
+		} else {
+			// error response if the repository returns an error
+			fmt.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+		}
 
 	}
 }
@@ -58,25 +71,35 @@ func MakeGetFeedbackHandler(ctx context.Context, repository repository.Repositor
 func MakeAddFeedbackHandler(ctx context.Context, repository repository.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// read the request body (+ check for error)
-
-		// error response if the request body can't be read
-
-		// create a variable for the new feedback
-
-		// transform the request body into a feedback struct and save it to the variable (+ check for error)
-
-		// error response if the json tranformation fails
-
-		// validate the feedback using the ValidateFeedback function from the validation package (+ check for error)
-
-		// error response if the validation fails (custom error message should be added to the response)
-
+		var fb models.Feedback
+		err := json.NewDecoder(r.Body).Decode(&fb)
+		if err != nil {
+			// error response if the json transformation fails
+			fmt.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		err = validation.ValidateFeedback(fb)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		fb.ID = uuid.New().String()
 		// generate a new uuid for the feedback (save it to feedback.ID)
 
 		// add the new feedback to the repository (+ check for error)
-
+		fb, err = repository.CreateFeedback(ctx, fb)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+		}
 		// transform the created feedback repository response into json (+ check for error)
-
+		if json, err := json.Marshal(fb); err == nil {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, string(json))
+		} else {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+		}
 		// successful: send the feedback as json response
 
 		// repository or json error: send an error response
