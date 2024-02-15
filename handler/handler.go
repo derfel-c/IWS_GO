@@ -160,7 +160,20 @@ func MakeAverageOverallSatisfactionHandler(ctx context.Context, repository repos
 			an average satisfaction rating from a feedback
 			-------------------------------------------
 		*/
+		ch := make(chan int)
+		for _, feedback := range feedbacks {
+			go func(feedback models.Feedback, ch chan int) {
+				val := readOverallSatisfactionRating(feedback)
+				ch <- val
+			}(feedback, ch)
+		}
 
+		i := 0
+		for i < len(feedbacks) {
+			sum += <-ch
+			i++
+		}
+		close(ch)
 		//calculate the average
 		average := float64(sum) / float64(len(feedbacks))
 
