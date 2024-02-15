@@ -1,5 +1,9 @@
 package models
 
+import (
+	"fmt"
+)
+
 type Rating struct {
 	Rating  int
 	Comment string
@@ -24,19 +28,28 @@ type Ratings struct {
 	OverallSatisfaction Rating
 }
 
-func NewRating(ratingVal int, comment string) (rating Rating, message string) {
-	rating = Rating{Rating: ratingVal, Comment: comment}
-	message = ValidateRating(rating)
-	if message == "Valid" {
+func NewRating(ratingVal int, comment string) (rating *Rating, e error) {
+	rating = &Rating{Rating: ratingVal, Comment: comment}
+	e = ValidateRating(*rating)
+	if e == nil {
 		return
 	} else {
-		return Rating{}, "Rating not valid"
+		return nil, e
 	}
 }
-func ValidateRating(rating Rating) string {
-	if rating.Rating < 0 || rating.Rating > 10 || len(rating.Comment) > 200 {
-		return "Invalid"
+func ValidateRating(rating Rating) error {
+	if rating.Rating < 0 {
+		return fmt.Errorf("invalid, rating < 0 not allowed, rating is %d", rating.Rating)
+	} else if rating.Rating > 10 {
+		return fmt.Errorf("invalid, rating > 10 not allowed, rating is %d", rating.Rating)
+	} else if len(rating.Comment) > 200 {
+		return fmt.Errorf("invalid, comments > 200 characters not allowed, length is %d", len(rating.Comment))
 	} else {
-		return "Valid"
+		return nil
 	}
+}
+
+func (r *Rating) ChangeRating(newVal int, newComment string) {
+	r.Rating = newVal
+	r.Comment = newComment
 }
